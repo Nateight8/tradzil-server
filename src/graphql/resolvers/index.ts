@@ -1,5 +1,5 @@
 import merge from "lodash.merge";
-import { userResolvers } from "./user";
+import { userResolvers } from "./user.js";
 
 const resolvers = merge({}, userResolvers);
 

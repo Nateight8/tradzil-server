@@ -2,7 +2,6 @@
   "compilerOptions": {
     "target": "es2020",
     "module": "commonjs",
-    "lib": ["es2020"],
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -11,17 +10,15 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "incremental": true,
-    "baseUrl": ".",
+    "noEmit": false,
     "outDir": "./dist",
-    "paths": {
-      "@/*": ["src/*"]
-    },
-    "typeRoots": ["./node_modules/@types", "./src/types"]
+    "rootDir": "./src",
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "sourceMap": true,
+    "declaration": true,
+    "removeComments": true,
+    "strictNullChecks": true
   },
-  "ts-node": {
-    "require": ["tsconfig-paths/register"]
-  },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

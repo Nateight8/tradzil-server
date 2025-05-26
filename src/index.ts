@@ -55,15 +55,15 @@ const app = express();
 // Session configuration
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    secret: process.env.SESSION_SECRET || "your-secret-key",
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: isProduction,
       httpOnly: true,
-      sameSite: isProduction ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
-    }
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    },
   })
 );
 
@@ -157,14 +157,14 @@ async function startServer() {
         // Get user from either Passport's req.user or session
         const user = req.user || req.session?.user || null;
         console.log("GraphQL context - user:", user);
-        
-        return { 
-          db, 
+
+        return {
+          db,
           user,
           session: req.session,
-          req, 
-          res, 
-          pubsub 
+          req,
+          res,
+          pubsub,
         };
       },
     })
