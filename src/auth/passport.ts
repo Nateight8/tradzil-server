@@ -23,9 +23,14 @@ export function setupPassport() {
       {
         clientID: process.env.AUTH_GOOGLE_ID || "",
         clientSecret: process.env.AUTH_GOOGLE_SECRET || "",
-        callbackURL:
-          process.env.GOOGLE_CALLBACK_URL ||
-          "http://localhost:4000/api/auth/google/callback",
+        callbackURL: (() => {
+          // In production, we need to use the public URL
+          if (process.env.NODE_ENV === 'production') {
+            return 'https://mongo-server-50r8.onrender.com/api/auth/google/callback';
+          }
+          // In development, use localhost
+          return 'http://localhost:4000/api/auth/google/callback';
+        })(),
       },
       async (
         accessToken: string,
