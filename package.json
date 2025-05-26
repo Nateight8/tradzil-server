@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "tsx src/index.ts"
+    "start": "npx tsx src/index.ts"
   },
   "keywords": [],
   "author": "",
@@ -43,6 +43,7 @@
     "postgres": "^3.4.5",
     "tsc-alias": "^1.8.15",
     "typescript": "^5.7.2",
+    "tsx": "^4.19.3",
     "ws": "^8.18.1"
   },
   "devDependencies": {
