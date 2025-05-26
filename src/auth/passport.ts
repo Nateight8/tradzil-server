@@ -6,7 +6,10 @@ import {
 } from "passport-google-oauth20";
 import "dotenv/config";
 import { db } from "../db/index.js";
-import { users, User as DbUser } from "../db/schema/index.js";
+import { OnboardingStep, users } from "../db/schema/index.js";
+import type { InferSelectModel } from "drizzle-orm";
+
+type DbUser = InferSelectModel<typeof users>;
 import { eq } from "drizzle-orm";
 import { Snowflake } from "@theinternetfolks/snowflake";
 
@@ -25,11 +28,11 @@ export function setupPassport() {
         clientSecret: process.env.AUTH_GOOGLE_SECRET || "",
         callbackURL: (() => {
           // In production, we need to use the public URL
-          if (process.env.NODE_ENV === 'production') {
-            return 'https://tradzil-server.onrender.com/api/auth/google/callback';
+          if (process.env.NODE_ENV === "production") {
+            return "https://tradzil-server.onrender.com/api/auth/google/callback";
           }
           // In development, use localhost
-          return 'http://localhost:4000/api/auth/google/callback';
+          return "http://localhost:4000/api/auth/google/callback";
         })(),
       },
       async (
@@ -47,17 +50,62 @@ export function setupPassport() {
 
           // Check if a user with this email already exists
           const existingUserByEmail = await db.query.users.findFirst({
-            where: (users: any, { eq }: any) => eq(users.email, email as string),
+            where: (users: any, { eq }: any) =>
+              eq(users.email, email as string),
           });
+
           if (existingUserByEmail) {
-            // Map all null fields to undefined for compatibility
-            const sanitizedUser = Object.fromEntries(
-              Object.entries(existingUserByEmail).map(([k, v]) => [
-                k,
-                v === null ? undefined : v,
-              ])
-            );
-            return done(null, sanitizedUser as any);
+            // Check onboarding status for existing user
+            if (existingUserByEmail.onboardingCompleted) {
+              // User has completed onboarding - they should go to dashboard
+              const sanitizedUser = Object.fromEntries(
+                Object.entries(existingUserByEmail).map(([k, v]) => [
+                  k,
+                  v === null ? undefined : v,
+                ])
+              );
+              // Add a flag to indicate dashboard redirect
+              (sanitizedUser as any).shouldRedirectToDashboard = true;
+              return done(null, sanitizedUser as any);
+            } else {
+              // User hasn't completed onboarding
+              // Only set onboardingStep to "account_setup" if it's NULL/undefined
+              // This preserves progress if they're already in a later step
+              let shouldUpdateOnboardingStep = false;
+              let updatedUser = existingUserByEmail;
+
+              if (!existingUserByEmail.onboardingStep) {
+                // User has no onboarding step set, initialize to account_setup
+                shouldUpdateOnboardingStep = true;
+
+                await db
+                  .update(users)
+                  .set({ onboardingStep: "account_setup" })
+                  .where(eq(users.email, email));
+
+                // Fetch updated user
+                const fetchedUser = await db.query.users.findFirst({
+                  where: (users: any, { eq }: any) =>
+                    eq(users.email, email as string),
+                });
+
+                if (fetchedUser) {
+                  updatedUser = fetchedUser;
+                }
+              }
+              // If user already has an onboardingStep, don't modify it
+
+              const sanitizedUser = Object.fromEntries(
+                Object.entries(updatedUser).map(([k, v]) => [
+                  k,
+                  v === null ? undefined : v,
+                ])
+              );
+
+              // Add a flag to indicate onboarding redirect
+              (sanitizedUser as any).shouldRedirectToOnboarding = true;
+              return done(null, sanitizedUser as any);
+            }
           }
 
           // Otherwise, create new user
@@ -67,14 +115,17 @@ export function setupPassport() {
             email,
             image: profile.photos?.[0]?.value || undefined,
             participantId: Snowflake.generate(),
-            // Optional fields are left undefined
+            onboardingCompleted: false, // Explicitly set to false for new users
+            // onboardingStep will be set to NULL by default for new users
+            // It will be set to "account_setup" on first login above
           };
 
           await db.insert(users).values(newUser);
 
           // Fetch and return the created user
           const existingUser = await db.query.users.findFirst({
-            where: (users: any, { eq }: any) => eq(users.id, googleId as string),
+            where: (users: any, { eq }: any) =>
+              eq(users.id, googleId as string),
           });
 
           // Map all null fields to undefined for compatibility
@@ -86,6 +137,11 @@ export function setupPassport() {
                 ])
               )
             : undefined;
+
+          // New users should go to onboarding
+          if (sanitizedCreatedUser) {
+            (sanitizedCreatedUser as any).shouldRedirectToOnboarding = true;
+          }
 
           return done(null, sanitizedCreatedUser as any);
         } catch (err) {
@@ -108,4 +164,23 @@ export function setupPassport() {
   );
 
   return passport;
+}
+
+// Helper function to handle post-authentication redirect logic
+export function getPostAuthRedirect(user: any): string {
+  const baseUrl =
+    process.env.NODE_ENV === "production"
+      ? "https://your-frontend-domain.com"
+      : "http://localhost:3000"; // Adjust to your frontend URL
+
+  if (user.shouldRedirectToDashboard) {
+    return `${baseUrl}/dashboard`;
+  } else if (user.shouldRedirectToOnboarding) {
+    return `${baseUrl}/onboarding`;
+  } else {
+    // Default fallback
+    return user.onboardingCompleted
+      ? `${baseUrl}/dashboard`
+      : `${baseUrl}/onboarding`;
+  }
 }

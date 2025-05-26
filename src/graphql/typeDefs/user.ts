@@ -13,15 +13,13 @@ export const userTypeDefs = gql`
     name: String
     email: String!
     image: String
+    onboardingStep: OnboardingStep
     createdAt: String
     updatedAt: String
+    # accounts: [TradingAccount!]!
   }
 
   type Query {
-    """
-    Get the currently authenticated user.
-    Returns null if no user is authenticated.
-    """
     me: User
   }
 

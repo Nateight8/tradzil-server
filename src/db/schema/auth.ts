@@ -4,18 +4,18 @@ import {
   text,
   primaryKey,
   integer,
-  uniqueIndex,
   boolean,
-  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 // import type { AdapterAccount } from "@auth/core/adapters";
-import postgres from "postgres";
-import { drizzle } from "drizzle-orm/postgres-js";
 
-const connectionString = process.env.DATABASE_URL!;
-const pool = postgres(connectionString, { max: 1 });
-export const db = drizzle(pool);
+export const onboardingSteps = [
+  "account_setup",
+  "trading_style",
+  "safety_net",
+  "complete",
+] as const;
+export type OnboardingStep = (typeof onboardingSteps)[number];
 
 export const users = pgTable("user", {
   id: text("id").primaryKey(),
@@ -28,13 +28,28 @@ export const users = pgTable("user", {
   location: text("location"),
   address: text("address"),
   phoneVerified: boolean("phoneVerified"),
-  onboardingCompleted: boolean("onboardingCompleted"),
+  onboardingCompleted: boolean("onboarding_completed"),
   banner: text("banner"),
   username: text("username"),
   avatar: text("avatar"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   participantId: varchar("participant_id", { length: 64 }),
+  providerAccountId: text("provider_account_id").unique(),
+
+  goals: text("goals", {
+    enum: ["prop", "improve", "discipline", "analytics"],
+  }), // Made optional by removing .notNull()
+
+  experienceLevel: text("experience_level", {
+    enum: ["beginner", "intermediate", "advanced"],
+  }),
+
+  biggestChallenge: text("biggest_challenge").array(), // still an array for multiple challenges
+
+  onboardingStep: text("onboarding_step", {
+    enum: onboardingSteps,
+  }).default("account_setup"),
 });
 
 export const accounts = pgTable(
@@ -118,4 +133,4 @@ export const authenticators = pgTable(
   })
 );
 
-export type User = typeof users.$inferSelect;
+// export type User = typeof users.$inferSelect;
