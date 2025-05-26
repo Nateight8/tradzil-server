@@ -17,37 +17,60 @@ import { setupPassport } from "./auth/passport.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import passport from "passport";
 import session from "express-session";
-import "dotenv/config";
+import { env } from "./utils/env.js";
+
+// Load environment variables
+console.log('🌐 Environment:', {
+  NODE_ENV: env.NODE_ENV,
+  APP_URL: env.APP_URL,
+  API_URL: env.API_URL,
+  DATABASE_URL: env.DATABASE_URL ? '✅ Set' : '❌ Missing',
+  SESSION_SECRET: env.SESSION_SECRET ? '✅ Set' : '❌ Missing',
+  GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID ? '✅ Set' : '❌ Missing',
+  GOOGLE_CALLBACK_URL: env.GOOGLE_CALLBACK_URL,
+});
 
 interface MyContext {
   token?: String;
 }
 
-const isProduction = process.env.NODE_ENV === "production";
-
-const allowedOrigins = [
-  ...process.env
-    .CORS_ORIGINS!.split(",")
-    .map((origin) => origin.trim().replace(/\/$/, ""))
-    .filter(Boolean),
-  "https://studio.apollographql.com", // Allow Apollo Sandbox
-  "http://localhost:4000", // Allow local development
-  "http://localhost:3000", // Allow local frontend
-];
-
+// CORS configuration
 const corsOptions: CorsOptions = {
-  origin: (
-    origin: string | undefined,
-    callback: (err: Error | null, allow?: boolean) => void
-  ) => {
-    if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
-      callback(null, true);
-    } else {
-      console.log("CORS blocked origin:", origin); // Add logging for debugging
-      callback(new Error("Not allowed by CORS"));
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    try {
+      const originUrl = new URL(origin);
+      const allowedOrigins = Array.isArray(env.CORS_ORIGIN) 
+        ? env.CORS_ORIGIN 
+        : [env.CORS_ORIGIN];
+      
+      const isAllowed = allowedOrigins.some(allowed => {
+        try {
+          const allowedUrl = new URL(allowed);
+          return originUrl.hostname === allowedUrl.hostname && 
+                originUrl.protocol === allowedUrl.protocol;
+        } catch {
+          return false;
+        }
+      });
+      
+      if (isAllowed || origin.endsWith('studio.apollographql.com')) {
+        return callback(null, true);
+      }
+      
+      console.log("CORS blocked origin:", origin);
+      return callback(new Error(`Origin '${origin}' not allowed by CORS`));
+    } catch (error) {
+      console.error('Error processing CORS origin:', error);
+      return callback(null, false);
     }
   },
   credentials: true,
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 };
 
 const app = express();
@@ -55,27 +78,21 @@ const app = express();
 // Session configuration
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "your-secret-key",
+    secret: env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: isProduction,
+      secure: env.isProduction,
       httpOnly: true,
-      sameSite: isProduction ? "none" : "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      sameSite: env.isProduction ? 'none' : 'lax',
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      domain: env.isProduction ? new URL(env.APP_URL).hostname : undefined,
     },
   })
 );
 
-// Initialize Passport and session
-app.use(passport.initialize());
-app.use(passport.session());
-
-// Register auth routes
-registerAuthRoutes(app);
-
 // Trust proxy in production for correct cookie handling
-if (isProduction) {
+if (env.isProduction) {
   app.set("trust proxy", 1);
 }
 
@@ -83,19 +100,12 @@ const httpServer = http.createServer(app);
 
 // --- Auth setup ---
 setupPassport();
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "supersecret", // Change in production
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: isProduction, // true in production (HTTPS)
-      sameSite: isProduction ? "none" : "lax", // 'none' for cross-site in prod, 'lax' for dev
-    },
-  })
-);
+
+// Initialize Passport and session
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Register auth routes
 registerAuthRoutes(app);
 
 // Create a PubSub instance

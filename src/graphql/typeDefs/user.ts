@@ -16,7 +16,7 @@ export const userTypeDefs = gql`
     onboardingStep: OnboardingStep
     createdAt: String
     updatedAt: String
-    # accounts: [TradingAccount!]!
+    accounts: [TradingAccount!]!
   }
 
   type Query {

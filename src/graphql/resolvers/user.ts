@@ -1,24 +1,26 @@
 import { GraphqlContext } from "../../types/types.utils";
 import { users } from "../../db/schema/auth";
-import { eq } from "drizzle-orm";
+
 import { GraphQLError } from "graphql";
+import { tradingAccounts } from "../../db/schema/account";
+import { eq } from "drizzle-orm";
 
 export const userResolvers = {
   Query: {
     me: async (_: any, __: any, context: GraphqlContext) => {
       const { user, db, req } = context;
-      
+
       console.log("Me resolver - context user:", user);
       console.log("Me resolver - session user:", req?.session?.user);
-      
+
       // If no user in context, try to get from session
       const currentUser = user || req?.session?.user;
-      
+
       if (!currentUser?.id) {
         console.log("No authenticated user found");
         return null; // Return null instead of throwing to match GraphQL schema (User can be null)
       }
-      
+
       // Update context with the resolved user
       context.user = currentUser;
 
@@ -43,31 +45,41 @@ export const userResolvers = {
         }
 
         // Then get the user's accounts with required fields for TradingAccount type
-        // const userAccounts = await db
-        //   .select({
-        //     id: tradingAccounts.id,
-        //     accountId: tradingAccounts.accountId,
-        //     accountName: tradingAccounts.accountName,
-        //     broker: tradingAccounts.broker,
-        //     accountSize: tradingAccounts.accountSize,
-        //     accountCurrency: tradingAccounts.accountCurrency,
-        //     isProp: tradingAccounts.isProp,
-        //     funded: tradingAccounts.funded,
-        //     fundedAt: tradingAccounts.fundedAt,
-        //     propFirm: tradingAccounts.propFirm,
-        //     goal: tradingAccounts.goal,
-        //     experienceLevel: tradingAccounts.experienceLevel,
-        //     biggestChallenge: tradingAccounts.biggestChallenge,
-        //     createdAt: tradingAccounts.createdAt,
-        //     updatedAt: tradingAccounts.updatedAt,
-        //   })
-        //   .from(tradingAccounts)
-        //   .where(eq(tradingAccounts.userId, user.id));
+        const userAccounts = await db
+          .select({
+            id: tradingAccounts.id,
+            accountId: tradingAccounts.accountId,
+            userId: tradingAccounts.userId, // Add userId to the selection
+            accountName: tradingAccounts.accountName,
+            broker: tradingAccounts.broker,
+            accountSize: tradingAccounts.accountSize,
+            accountCurrency: tradingAccounts.accountCurrency,
+            isProp: tradingAccounts.isProp,
+            funded: tradingAccounts.funded,
+            fundedAt: tradingAccounts.fundedAt,
+            propFirm: tradingAccounts.propFirm,
+            goal: tradingAccounts.goal,
+            experienceLevel: tradingAccounts.experienceLevel,
+            biggestChallenge: tradingAccounts.biggestChallenge,
+            createdAt: tradingAccounts.createdAt,
+            updatedAt: tradingAccounts.updatedAt,
+          })
+          .from(tradingAccounts)
+          .where(eq(tradingAccounts.userId, currentUser.id));
 
-        // Return user with accounts
+        // Transform accounts to match GraphQL enum values and ensure required fields are present
+        const transformedAccounts = userAccounts.map(account => ({
+          ...account,
+          // Ensure userId is included and is a string
+          userId: account.userId?.toString() || currentUser.id,
+          // Convert goal to uppercase to match GraphQL enum
+          goal: account.goal?.toUpperCase()
+        }));
+
+        // Return user with transformed accounts
         return {
           ...userData,
-          //   accounts: userAccounts,
+          accounts: transformedAccounts,
         };
       } catch (error) {
         console.error("Error fetching user:", error);
