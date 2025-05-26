@@ -26,7 +26,7 @@ export function setupPassport() {
         callbackURL: (() => {
           // In production, we need to use the public URL
           if (process.env.NODE_ENV === 'production') {
-            return 'https://mongo-server-50r8.onrender.com/api/auth/google/callback';
+            return 'https://tradzil-server.onrender.com/api/auth/google/callback';
           }
           // In development, use localhost
           return 'http://localhost:4000/api/auth/google/callback';
