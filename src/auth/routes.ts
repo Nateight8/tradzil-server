@@ -15,7 +15,7 @@ export function registerAuthRoutes(app: Express) {
     (req: Request, res: Response) => {
       const frontendUrl =
         process.env.NODE_ENV === "production"
-          ? "https://urbancruise.vercel.app"
+          ? "https://journal-gamma-two.vercel.app"
           : "http://localhost:3000";
       res.redirect(frontendUrl);
     }
@@ -29,7 +29,7 @@ export function registerAuthRoutes(app: Express) {
       }
       const frontendUrl =
         process.env.NODE_ENV === "production"
-          ? "https://urbancruise.vercel.app"
+          ? "https://journal-gamma-two.vercel.app"
           : "http://localhost:3000";
       res.redirect(frontendUrl);
     });
