@@ -36,44 +36,11 @@ interface MyContext {
 
 // CORS configuration - simplified and more permissive
 const corsOptions: CorsOptions = {
-  origin: (
-    origin: string | undefined,
-    callback: (err: Error | null, allow?: boolean) => void
-  ) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    // In development, allow all origins
-    if (!env.isProduction) {
-      return callback(null, true);
-    }
-
-    // Simple string matching for production
-    const allowedOrigins = Array.isArray(env.CORS_ORIGIN)
-      ? env.CORS_ORIGIN
-      : [env.CORS_ORIGIN];
-
-    const isAllowed =
-      allowedOrigins.includes(origin) ||
-      origin.includes("localhost") ||
-      origin.includes("127.0.0.1") ||
-      origin.endsWith("vercel.app") ||
-      origin.endsWith("studio.apollographql.com") ||
-      origin.endsWith("onrender.com");
-
-    if (isAllowed) {
-      return callback(null, true);
-    }
-
-    console.warn("CORS: Blocked origin:", origin);
-    return callback(new Error("Not allowed by CORS"));
-  },
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 200,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
 };
 
 const app = express();
