@@ -23,11 +23,9 @@ export function registerAuthRoutes(app: Express) {
       session: true,
     }),
     (req: Request, res: Response) => {
-      const frontendUrl =
-        process.env.NODE_ENV === "production"
-          ? "https://journal-gamma-two.vercel.app"
-          : "http://localhost:3000";
-
+      // Use APP_URL from environment variables, fallback to localhost:3000 if not set
+      const frontendUrl = process.env.APP_URL;
+      // || "http://localhost:3000"
       // Check user's onboarding status and redirect accordingly
       if (req.user) {
         const user = req.user as any;
@@ -41,7 +39,7 @@ export function registerAuthRoutes(app: Express) {
         }
       } else {
         // Fallback if no user (shouldn't happen with successful auth)
-        res.redirect(frontendUrl);
+        res.redirect(frontendUrl!);
       }
     }
   );

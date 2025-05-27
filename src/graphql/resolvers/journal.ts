@@ -10,6 +10,20 @@ import { formatTradingPlanNote } from "./plan.js";
 
 type Journal = InferSelectModel<typeof journals>;
 
+interface Create {
+  input: {
+    accountId: string | string[];
+    executionStyle: string;
+    instrument: string;
+    side: string;
+    size: number;
+    plannedEntryPrice: number;
+    plannedStopLoss: number;
+    plannedTakeProfit: number;
+    note?: any;
+  };
+}
+
 export const journalResolvers = {
   Query: {
     getLoggedJournals: async (_: any, __: any, ctx: GraphqlContext) => {
@@ -96,7 +110,11 @@ export const journalResolvers = {
   },
 
   Mutation: {
-    createJournal: async (_: any, args: any, ctx: GraphqlContext) => {
+    createJournal: async (
+      _: unknown,
+      args: { input: any },
+      ctx: GraphqlContext
+    ) => {
       const { db, user } = ctx;
 
       if (!user?.id) {
