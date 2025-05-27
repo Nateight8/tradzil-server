@@ -94,11 +94,17 @@ app.use(session(sessionConfig));
 
 const httpServer = http.createServer(app);
 
+// Apply CORS globally
+app.use(cors(corsOptions));
+
 // --- Auth setup ---
 setupPassport();
 
 // Initialize Passport and session
 app.use(passport.initialize());
+
+// Parse JSON bodies
+app.use(express.json());
 app.use(passport.session());
 
 // Register auth routes
@@ -156,8 +162,6 @@ async function startServer() {
 
   app.use(
     "/graphql",
-    cors(corsOptions),
-    express.json(),
     expressMiddleware(server, {
       context: async ({ req, res }) => {
         // Get user from either Passport's req.user or session
