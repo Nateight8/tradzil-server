@@ -20,13 +20,13 @@ import session from "express-session";
 import { env } from "./utils/env.js";
 
 // Load environment variables
-console.log('🌐 Environment:', {
+console.log("🌐 Environment:", {
   NODE_ENV: env.NODE_ENV,
   APP_URL: env.APP_URL,
   API_URL: env.API_URL,
-  DATABASE_URL: env.DATABASE_URL ? '✅ Set' : '❌ Missing',
-  SESSION_SECRET: env.SESSION_SECRET ? '✅ Set' : '❌ Missing',
-  GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID ? '✅ Set' : '❌ Missing',
+  DATABASE_URL: env.DATABASE_URL ? "✅ Set" : "❌ Missing",
+  SESSION_SECRET: env.SESSION_SECRET ? "✅ Set" : "❌ Missing",
+  GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID ? "✅ Set" : "❌ Missing",
   GOOGLE_CALLBACK_URL: env.GOOGLE_CALLBACK_URL,
 });
 
@@ -34,67 +34,74 @@ interface MyContext {
   token?: String;
 }
 
-// CORS configuration
+// CORS configuration - simplified and more permissive
 const corsOptions: CorsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (like mobile apps, curl, etc.)
+  origin: (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) {
       return callback(null, true);
     }
-    
-    try {
-      const originUrl = new URL(origin);
-      const allowedOrigins = Array.isArray(env.CORS_ORIGIN) 
-        ? env.CORS_ORIGIN 
-        : [env.CORS_ORIGIN];
-      
-      const isAllowed = allowedOrigins.some(allowed => {
-        try {
-          const allowedUrl = new URL(allowed);
-          return originUrl.hostname === allowedUrl.hostname && 
-                originUrl.protocol === allowedUrl.protocol;
-        } catch {
-          return false;
-        }
-      });
-      
-      if (isAllowed || origin.endsWith('studio.apollographql.com')) {
-        return callback(null, true);
-      }
-      
-      console.log("CORS blocked origin:", origin);
-      return callback(new Error(`Origin '${origin}' not allowed by CORS`));
-    } catch (error) {
-      console.error('Error processing CORS origin:', error);
-      return callback(null, false);
+
+    // In development, allow all origins
+    if (!env.isProduction) {
+      return callback(null, true);
     }
+
+    // Simple string matching for production
+    const allowedOrigins = Array.isArray(env.CORS_ORIGIN)
+      ? env.CORS_ORIGIN
+      : [env.CORS_ORIGIN];
+
+    const isAllowed =
+      allowedOrigins.includes(origin) ||
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.endsWith("vercel.app") ||
+      origin.endsWith("studio.apollographql.com") ||
+      origin.endsWith("onrender.com");
+
+    if (isAllowed) {
+      return callback(null, true);
+    }
+
+    console.warn("CORS: Blocked origin:", origin);
+    return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
-  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 200,
 };
 
 const app = express();
 
 // Session configuration
-app.use(
-  session({
-    secret: env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: env.isProduction,
-      httpOnly: true,
-      sameSite: env.isProduction ? 'none' : 'lax',
-      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
-      domain: env.isProduction ? new URL(env.APP_URL).hostname : undefined,
-    },
-  })
-);
+const sessionConfig: session.SessionOptions = {
+  secret: env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: env.isProduction, // Must be true if sameSite is 'none'
+    httpOnly: true,
+    sameSite: env.isProduction ? "none" : "lax",
+    maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+    // Don't set domain to allow cookies on all subdomains
+  },
+  proxy: env.isProduction, // Required for secure cookies with proxy
+};
 
 // Trust proxy in production for correct cookie handling
 if (env.isProduction) {
   app.set("trust proxy", 1);
+  console.log("Running in production mode with trust proxy");
+} else {
+  console.log("Running in development mode");
 }
+
+app.use(session(sessionConfig));
 
 const httpServer = http.createServer(app);
 
