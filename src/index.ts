@@ -61,7 +61,14 @@ const corsOptions: CorsOptions = {
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept',
+    'X-CSRF-Token'
+  ],
+  exposedHeaders: ['set-cookie'],
   optionsSuccessStatus: 200
 };
 
@@ -80,6 +87,8 @@ const sessionConfig: session.SessionOptions = {
     // Don't set domain to allow cookies on all subdomains
   },
   proxy: env.isProduction, // Required for secure cookies with proxy
+  name: 'tradzil.sid', // Custom session cookie name
+  rolling: true, // Reset maxAge on every request
 };
 
 // Trust proxy in production for correct cookie handling

@@ -146,14 +146,31 @@ export function setupPassport() {
   );
 
   passport.serializeUser(
-    (user: any, done: (err: any, id?: unknown) => void) => {
-      done(null, user);
+    (user: any, done: (err: any, id?: string | null) => void) => {
+      done(null, user?.id || null);
     }
   );
 
   passport.deserializeUser(
-    (obj: any, done: (err: any, user?: any | false | null) => void) => {
-      done(null, obj);
+    async (id: string, done: (err: any, user?: any | false | null) => void) => {
+      try {
+        if (!id) return done(null, null);
+        
+        const user = await db.query.users.findFirst({
+          where: (users: any, { eq }: any) => eq(users.id, id),
+        });
+        
+        if (!user) return done(null, null);
+        
+        // Convert null values to undefined for consistency
+        const sanitizedUser = Object.fromEntries(
+          Object.entries(user).map(([k, v]) => [k, v === null ? undefined : v])
+        );
+        
+        done(null, sanitizedUser);
+      } catch (err) {
+        done(err);
+      }
     }
   );
 
