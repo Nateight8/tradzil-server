@@ -34,11 +34,9 @@ interface MyContext {
   token?: String;
 }
 
-// CORS configuration
+// CORS configuration - Hardcoded allowed origins
 const allowedOrigins = [
-  'http://localhost:3000',
-  'https://urbancruise.vercel.app',
-  'https://journal-gamma-two.vercel.app'
+  'https://journal-gamma-two.vercel.app'  // Production frontend
 ];
 
 const corsOptions: CorsOptions = {
@@ -77,19 +75,25 @@ const app = express();
 // Session configuration
 const sessionConfig: session.SessionOptions = {
   secret: env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
+  resave: true, // Force save of session for all requests
+  saveUninitialized: false, // Don't save uninitialized sessions
   cookie: {
-    secure: env.isProduction, // Must be true if sameSite is 'none'
+    secure: true, // Must be true for production
     httpOnly: true,
-    sameSite: env.isProduction ? "none" : "lax",
-    maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+    sameSite: 'none', // Required for cross-site cookies
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
     // Don't set domain to allow cookies on all subdomains
   },
-  proxy: env.isProduction, // Required for secure cookies with proxy
-  name: 'tradzil.sid', // Custom session cookie name
+  proxy: true, // Trust the reverse proxy (required for secure cookies)
+  name: 'tradzil.sid',
   rolling: true, // Reset maxAge on every request
 };
+
+// Simple request logger for debugging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next();
+});
 
 // Trust proxy in production for correct cookie handling
 if (env.isProduction) {

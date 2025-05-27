@@ -23,23 +23,20 @@ export function registerAuthRoutes(app: Express) {
       session: true,
     }),
     (req: Request, res: Response) => {
-      // Use APP_URL from environment variables, fallback to localhost:3000 if not set
-      const frontendUrl = process.env.APP_URL;
-      // || "http://localhost:3000"
+      // Hardcoded frontend URLs
+      const frontendUrl = 'https://journal-gamma-two.vercel.app';
+      
       // Check user's onboarding status and redirect accordingly
       if (req.user) {
         const user = req.user as any;
-
-        if (user.onboardingCompleted) {
-          // User has completed onboarding - redirect to dashboard
-          res.redirect(`${frontendUrl}/dashboard`);
-        } else {
-          // User hasn't completed onboarding - redirect to onboarding
-          res.redirect(`${frontendUrl}/onboarding`);
-        }
+        const redirectUrl = user.onboardingCompleted ? '/dashboard' : '/onboarding';
+        const fullUrl = `${frontendUrl}${redirectUrl}`;
+        
+        console.log('Auth callback - Redirecting to:', fullUrl);
+        res.redirect(fullUrl);
       } else {
-        // Fallback if no user (shouldn't happen with successful auth)
-        res.redirect(frontendUrl!);
+        console.error('Auth callback - No user found in session');
+        res.redirect(frontendUrl);
       }
     }
   );
@@ -50,10 +47,9 @@ export function registerAuthRoutes(app: Express) {
       if (err) {
         return next(err);
       }
-      const frontendUrl =
-        process.env.NODE_ENV === "production"
-          ? "https://journal-gamma-two.vercel.app"
-          : "http://localhost:3000";
+      // Hardcoded frontend URL for logout
+      const frontendUrl = 'https://journal-gamma-two.vercel.app';
+      console.log('Logout - Redirecting to:', frontendUrl);
       res.redirect(frontendUrl);
     });
   });
@@ -61,26 +57,6 @@ export function registerAuthRoutes(app: Express) {
   // Debug endpoint to check session/user
   app.get("/api/me", (req: Request, res: Response) => {
     res.json({ user: req.user, session: req.session });
-  });
-
-  // Session check endpoint
-  app.get("/api/auth/session", (req: Request, res: Response) => {
-    if (!req.user) {
-      return res.status(200).json({ user: null });
-    }
-    
-    const user = req.user as any;
-    res.status(200).json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        image: user.avatar,
-        onboardingCompleted: user.onboardingCompleted,
-        onboardingStep: user.onboardingStep,
-      },
-      expires: req.session?.cookie?.expires?.toISOString() || null,
-    });
   });
 
   // Optional: Enhanced user info endpoint with onboarding status
