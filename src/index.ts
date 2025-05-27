@@ -34,12 +34,34 @@ interface MyContext {
   token?: String;
 }
 
-// CORS configuration - simplified and more permissive
+// CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://urbancruise.vercel.app',
+  'https://journal-gamma-two.vercel.app'
+];
+
 const corsOptions: CorsOptions = {
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is in the allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // For development, you might want to allow all origins
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    // Origin not allowed
+    return callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   optionsSuccessStatus: 200
 };
 
