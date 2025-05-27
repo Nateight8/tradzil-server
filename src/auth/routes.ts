@@ -63,6 +63,26 @@ export function registerAuthRoutes(app: Express) {
     res.json({ user: req.user, session: req.session });
   });
 
+  // Session check endpoint
+  app.get("/api/auth/session", (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(200).json({ user: null });
+    }
+    
+    const user = req.user as any;
+    res.status(200).json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.avatar,
+        onboardingCompleted: user.onboardingCompleted,
+        onboardingStep: user.onboardingStep,
+      },
+      expires: req.session?.cookie?.expires?.toISOString() || null,
+    });
+  });
+
   // Optional: Enhanced user info endpoint with onboarding status
   app.get("/api/user/status", (req: Request, res: Response) => {
     if (!req.user) {
